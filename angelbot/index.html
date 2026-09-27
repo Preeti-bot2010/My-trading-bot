@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trading Bot Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #1a1d24; --border: #2a2e38;
+    --text: #e8e8e8; --muted: #8a8f98;
+    --green: #3ecf8e; --red: #ff5c5c; --amber: #f5a623; --blue: #4d9fff;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    height: 100%; margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 16px; max-width: 640px; margin: 0 auto;
+  }
+  h1 { font-size: 1.3rem; margin: 8px 0 4px; }
+  h2 { font-size: 1rem; margin: 0 0 10px; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 14px;
+  }
+  .section-title { font-size: 1.05rem; font-weight: 700; margin: 22px 0 10px; }
+  .row { display: flex; justify-content: space-between; align-items: center; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .badge.open { background: rgba(62,207,142,0.15); color: var(--green); }
+  .badge.closed { background: rgba(255,92,92,0.15); color: var(--red); }
+  .badge.paper { background: rgba(77,159,255,0.15); color: var(--blue); }
+  .pnl { font-size: 1.7rem; font-weight: 700; }
+  .pnl.pos { color: var(--green); } .pnl.neg { color: var(--red); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .stat-label { color: var(--muted); font-size: 0.75rem; }
+  .stat-value { font-size: 1.05rem; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 4px; }
+  td { padding: 8px 4px; border-top: 1px solid var(--border); }
+  .dir-long { color: var(--green); } .dir-short { color: var(--red); }
+  .empty { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px 0; }
+  .notes { font-size: 0.8rem; color: var(--muted); line-height: 1.6; overflow-x: auto; white-space: pre-wrap; }
+  .refresh-note { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 10px; }
+  .error { color: var(--red); text-align: center; padding: 30px 10px; }
+</style>
+</head>
+<body>
+  <h1>📈 Paper Trading Bot</h1>
+  <div class="sub" id="lastUpdated">Loading...</div>
+
+  <div id="content">
+    <div class="empty">Fetching latest status...</div>
+  </div>
+
+  <div class="refresh-note">Auto-refreshes every 30s. Pull down or reload to force refresh.</div>
+
+<script>
+function pnlBlock(section) {
+  if (!section) return '<div class="empty">No data for this session yet.</div>';
+  const pnlClass = section.total_pnl >= 0 ? 'pos' : 'neg';
+  const sign = section.total_pnl >= 0 ? '+' : '';
+  return `
+    <div class="pnl ${pnlClass}">${sign}₹${section.total_pnl.toFixed(2)} <small style="font-size:0.95rem">(${sign}${section.total_pnl_pct}%)</small></div>
+    <div class="grid">
+      <div><div class="stat-label">Virtual Cash</div><div class="stat-value">₹${section.cash.toLocaleString()}</div></div>
+      <div><div class="stat-label">Starting Capital</div><div class="stat-value">₹${section.starting_capital.toLocaleString()}</div></div>
+    </div>`;
+}
+
+function equityPositionsTable(section) {
+  const positions = section ? Object.entries(section.open_positions || {}) : [];
+  if (!positions.length) return '<tr><td colspan="4" class="empty">No open positions</td></tr>';
+  return positions.map(([sym, p]) => `
+    <tr>
+      <td>${sym}</td>
+      <td class="${p.direction === 'LONG' ? 'dir-long' : 'dir-short'}">${p.direction}</td>
+      <td>₹${Number(p.entry).toFixed(2)}</td>
+      <td>${p.grade}</td>
+    </tr>`).join('');
+}
+
+function optionsPositionsTable(section) {
+  const positions = section ? Object.entries(section.open_positions || {}) : [];
+  if (!positions.length) return '<tr><td colspan="4" class="empty">No open position</td></tr>';
+  return positions.map(([sym, p]) => `
+    <tr>
+      <td>${p.strike} ${p.option_type}</td>
+      <td class="${p.option_type === 'CE' ? 'dir-long' : 'dir-short'}">${p.underlying_direction}</td>
+      <td>₹${Number(p.entry_premium).toFixed(2)}</td>
+      <td>${p.expiry}</td>
+    </tr>`).join('');
+}
+
+function tradesTable(section, isOptions) {
+  const trades = section ? (section.recent_trades || []) : [];
+  if (!trades.length) return '<tr><td colspan="4" class="empty">No trades yet</td></tr>';
+  return trades.map(t => {
+    let data = {};
+    try { data = JSON.parse(t.data); } catch (e) {}
+    const isExit = t.event.startsWith('EXIT');
+    const pnlVal = isOptions ? data.pnl : data.pnl;
+    const pnlTxt = isExit && pnlVal !== undefined
+      ? `<span class="${pnlVal >= 0 ? 'dir-long' : 'dir-short'}">₹${Number(pnlVal).toFixed(2)}</span>`
+      : '-';
+    return `<tr>
+      <td>${t.symbol}</td>
+      <td>${t.event.replace('_', ' ')}</td>
+      <td>${new Date(t.timestamp).toLocaleTimeString()}</td>
+      <td>${pnlTxt}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadStatus() {
+  const content = document.getElementById('content');
+  const lastUpdated = document.getElementById('lastUpdated');
+  try {
+    const res = await fetch('status.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('status.json not found yet - bot may not have run yet');
+    const s = await res.json();
+
+    const marketBadge = s.market_open
+      ? '<span class="badge open">MARKET OPEN</span>'
+      : '<span class="badge closed">MARKET CLOSED</span>';
+    const modeBadge = s.live_trading
+      ? '<span class="badge closed">LIVE</span>'
+      : '<span class="badge paper">PAPER TRADING</span>';
+
+    lastUpdated.innerHTML = s.last_run
+      ? `Last run: ${new Date(s.last_run).toLocaleString()} &nbsp; ${marketBadge} ${modeBadge}`
+      : `Not run yet &nbsp; ${marketBadge}`;
+
+    content.innerHTML = `
+      <div class="section-title">📊 Equity (Stock Watchlist)</div>
+      <div class="card">${pnlBlock(s.equity)}</div>
+      <div class="card">
+        <div class="row"><strong>Open Positions</strong></div>
+        <table><thead><tr><th>Symbol</th><th>Dir</th><th>Entry</th><th>Grade</th></tr></thead>
+        <tbody>${equityPositionsTable(s.equity)}</tbody></table>
+      </div>
+      <div class="card">
+        <div class="row"><strong>Recent Trades</strong></div>
+        <table><thead><tr><th>Symbol</th><th>Event</th><th>Time</th><th>P&amp;L</th></tr></thead>
+        <tbody>${tradesTable(s.equity, false)}</tbody></table>
+      </div>
+
+      <div class="section-title">🎯 Options (Nifty CE/PE)</div>
+      <div class="card">${pnlBlock(s.options)}</div>
+      <div class="card">
+        <div class="row"><strong>Open Position</strong></div>
+        <table><thead><tr><th>Strike/Type</th><th>Dir</th><th>Premium</th><th>Expiry</th></tr></thead>
+        <tbody>${optionsPositionsTable(s.options)}</tbody></table>
+      </div>
+      <div class="card">
+        <div class="row"><strong>Recent Trades</strong></div>
+        <table><thead><tr><th>Symbol</th><th>Event</th><th>Time</th><th>P&amp;L</th></tr></thead>
+        <tbody>${tradesTable(s.options, true)}</tbody></table>
+      </div>
+
+      <div class="card">
+        <div class="row"><strong>Last Run Log</strong></div>
+        <div class="notes">Equity: ${(s.equity && s.equity.notes || []).join('\\n')}
+
+Options: ${(s.options && s.options.notes || []).join('\\n')}</div>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="error">⚠️ ${err.message}<br><br>If you just deployed, wait for the first scheduled run or trigger one manually from the GitHub Actions tab.</div>`;
+    lastUpdated.textContent = 'Not connected yet';
+  }
+}
+loadStatus();
+setInterval(loadStatus, 30000);
+</script>
+</body>
+</html>
