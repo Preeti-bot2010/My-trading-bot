@@ -18,6 +18,7 @@ import requests
 from SmartApi import SmartConnect
 
 import config
+from time_utils import now_ist
 
 INSTRUMENT_MASTER_URL = (
     "https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json"
@@ -83,7 +84,7 @@ class AngelFeed:
     # ---------- HISTORICAL CANDLES ----------
     def get_historical_df(self, symbol: str) -> pd.DataFrame:
         info = self.get_token(symbol)
-        to_date = dt.datetime.now()
+        to_date = now_ist()
         from_date = to_date - dt.timedelta(days=config.LOOKBACK_DAYS)
 
         params = {
@@ -145,7 +146,7 @@ class AngelFeed:
 
     def get_index_historical_df(self, index_name: str) -> pd.DataFrame:
         row = self._find_index_row(index_name)
-        to_date = dt.datetime.now()
+        to_date = now_ist()
         from_date = to_date - dt.timedelta(days=config.LOOKBACK_DAYS)
         params = {
             "exchange": "NSE",
@@ -228,7 +229,7 @@ class AngelFeed:
 
 def is_market_open(now: dt.datetime = None) -> bool:
     """NSE cash market hours: 9:15 - 15:30 IST, Mon-Fri. Holidays not checked here."""
-    now = now or dt.datetime.now()
+    now = now or now_ist()
     if now.weekday() >= 5:
         return False
     start = now.replace(hour=9, minute=15, second=0, microsecond=0)
