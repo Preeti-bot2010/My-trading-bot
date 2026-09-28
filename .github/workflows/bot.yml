@@ -40,9 +40,11 @@ jobs:
         run: python run_once.py
 
       - name: Commit updated dashboard data
+           - name: Commit updated dashboard data
         run: |
           git config user.name "trading-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add status.json trades_log.csv open_positions.json options_trades_log.csv options_open_positions.json 2>/dev/null || true
+          git add -A
           git diff --staged --quiet || git commit -m "Bot run: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase
           git push
