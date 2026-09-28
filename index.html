@@ -122,7 +122,9 @@ async function loadStatus() {
   const content = document.getElementById('content');
   const lastUpdated = document.getElementById('lastUpdated');
   try {
-    const res = await fetch('status.json?t=' + Date.now(), { cache: 'no-store' });
+    const RAW = 'https://raw.githubusercontent.com/Preeti-bot2010/My-trading-bot/main/status.json';
+let res = await fetch(RAW + '?t=' + Date.now(), { cache: 'no-store' }).catch(() => null);
+if (!res || !res.ok) res = await fetch('status.json?t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('status.json not found yet - bot may not have run yet');
     const s = await res.json();
 
