@@ -13,6 +13,7 @@ import os
 
 import config
 from notifier import send_telegram
+from time_utils import now_ist
 
 
 class PaperOptionsPortfolio:
@@ -49,7 +50,7 @@ class PaperOptionsPortfolio:
             "entry_premium": entry_premium,
             "stop_loss": round(sl_price, 2),
             "target": round(target_price, 2),
-            "entry_time": dt.datetime.now().isoformat(),
+            "entry_time": now_ist().isoformat(),
             "grade": signal["grade"],
             "reasons": signal["reasons"],
         }
@@ -81,7 +82,7 @@ class PaperOptionsPortfolio:
             else:
                 result = "TARGET" if hit_target else "STOP_LOSS"
             exit_record = {**pos, "exit_premium": current_premium, "pnl": round(pnl, 2),
-                            "result": result, "exit_time": dt.datetime.now().isoformat()}
+                            "result": result, "exit_time": now_ist().isoformat()}
             log_option_trade(symbol, f"EXIT_{result}", exit_record)
             print(f"[PAPER OPTION EXIT] {symbol} {result} pnl={pnl:.2f} cash={self.cash:.2f}")
             emoji = "🟢" if pnl >= 0 else "🔴"
@@ -101,17 +102,17 @@ def log_option_trade(symbol, event, data):
         writer = csv.writer(f)
         if not file_exists:
             writer.writerow(["timestamp", "symbol", "event", "data"])
-        writer.writerow([dt.datetime.now().isoformat(), symbol, event, json.dumps(data)])
+        writer.writerow([now_ist().isoformat(), symbol, event, json.dumps(data)])
 
 
 def is_past_square_off_time() -> bool:
-    now = dt.datetime.now().time()
+    now = now_ist().time()
     cutoff = dt.datetime.strptime(config.SQUARE_OFF_TIME, "%H:%M").time()
     return now >= cutoff
 
 
 def is_within_entry_window() -> bool:
-    now = dt.datetime.now().time()
+    now = now_ist().time()
     start = dt.datetime.strptime(config.NO_NEW_ENTRY_BEFORE, "%H:%M").time()
     end = dt.datetime.strptime(config.NO_NEW_ENTRY_AFTER, "%H:%M").time()
     return start <= now <= end
