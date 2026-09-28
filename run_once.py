@@ -24,6 +24,7 @@ import datetime as dt
 import json
 
 import config
+from time_utils import now_ist
 from angel_data_feed import AngelFeed, is_market_open
 from strategy import score_symbol
 from paper_trader import PaperPortfolio
@@ -145,7 +146,7 @@ def run_options_pass(feed: AngelFeed) -> dict:
 
 def write_status(market_open: bool, equity: dict = None, options: dict = None):
     status = {
-        "last_run": dt.datetime.now().isoformat(timespec="seconds"),
+        "last_run": now_ist().isoformat(timespec="seconds"),
         "market_open": market_open,
         "live_trading": config.LIVE_TRADING,
         "equity": equity,
