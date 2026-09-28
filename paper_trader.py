@@ -21,6 +21,7 @@ import os
 import time
 
 import config
+from time_utils import now_ist
 from angel_data_feed import AngelFeed, is_market_open
 from strategy import score_symbol
 from notifier import send_telegram
@@ -59,7 +60,7 @@ class PaperPortfolio:
             "entry": signal["entry"],
             "stop_loss": signal["stop_loss"],
             "target": signal["target"],
-            "entry_time": dt.datetime.now().isoformat(),
+            "entry_time": now_ist().isoformat(),
             "grade": signal["grade"],
             "reasons": signal["reasons"],
         }
@@ -89,7 +90,7 @@ class PaperPortfolio:
             self.cash += pnl
             result = "TARGET" if hit_target else "STOP_LOSS"
             exit_record = {**pos, "exit_price": ltp, "pnl": pnl, "result": result,
-                            "exit_time": dt.datetime.now().isoformat()}
+                            "exit_time": now_ist().isoformat()}
             log_trade_event(symbol, f"EXIT_{result}", exit_record)
             print(f"[PAPER EXIT] {symbol} {result} pnl={pnl:.2f} cash={self.cash:.2f}")
             emoji = "🟢" if pnl >= 0 else "🔴"
@@ -109,7 +110,7 @@ def log_trade_event(symbol, event, data):
         writer = csv.writer(f)
         if not file_exists:
             writer.writerow(["timestamp", "symbol", "event", "data"])
-        writer.writerow([dt.datetime.now().isoformat(), symbol, event, json.dumps(data)])
+        writer.writerow([now_ist().isoformat(), symbol, event, json.dumps(data)])
 
 
 def place_live_order(feed: AngelFeed, symbol: str, signal: dict):
@@ -142,7 +143,7 @@ def run():
 
     while True:
         if not is_market_open():
-            print(f"[{dt.datetime.now().strftime('%H:%M:%S')}] Market closed. Sleeping...")
+            print(f"[{now_ist().strftime('%H:%M:%S')}] Market closed. Sleeping...")
             time.sleep(300)
             continue
 
