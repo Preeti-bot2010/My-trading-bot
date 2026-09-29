@@ -10,7 +10,7 @@ load_dotenv()
 ANGEL_API_KEY = os.getenv("ANGEL_API_KEY", "")
 ANGEL_CLIENT_CODE = os.getenv("ANGEL_CLIENT_CODE", "")
 ANGEL_PIN = os.getenv("ANGEL_PIN", "")
-ANGEL_TOTP_SECRET = os.getenv("ANGEL_TOTP_SECRET", "")
+ANGEL_TOTP_SECRET = os.getenv("ANGEL_TOTP_SECRET", "").strip().replace(" ", "")
 
 # ---- Telegram alerts (optional - leave blank to disable) ----
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
