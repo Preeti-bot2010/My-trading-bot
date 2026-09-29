@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANGEL_API_KEY = os.getenv("ANGEL_API_KEY", "")
-ANGEL_CLIENT_CODE = os.getenv("ANGEL_CLIENT_CODE", "")
-ANGEL_PIN = os.getenv("ANGEL_PIN", "")
+ANGEL_API_KEY = os.getenv("ANGEL_API_KEY", "").strip()
+ANGEL_CLIENT_CODE = os.getenv("ANGEL_CLIENT_CODE", "").strip()
+ANGEL_PIN = os.getenv("ANGEL_PIN", "").strip()
 ANGEL_TOTP_SECRET = os.getenv("ANGEL_TOTP_SECRET", "").strip().replace(" ", "")
 
 # ---- Telegram alerts (optional - leave blank to disable) ----
